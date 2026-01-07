@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JBF // KINETIC GIS MASTER</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        /* --- SWISS BRUTALIST CSS --- */
+        :root {
+            --swiss-red: #E63946;
+            --swiss-black: #111;
+            --swiss-white: #F4F4F4;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--swiss-white);
+            color: var(--swiss-black);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+
+        /* FIXED UI LAYER (The "Hud") */
+        .ui-layer {
+            position: fixed;
+            top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 3px solid var(--swiss-black);
+            pointer-events: none;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .brand {
+            font-weight: 900;
+            font-size: 2rem;
+            letter-spacing: -2px;
+            background: var(--swiss-white);
+            padding: 0 10px;
+        }
+
+        .status {
+            font-family: monospace;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-align: right;
+            background: var(--swiss-white);
+            padding: 5px;
+        }
+
+        /* BACKGROUND CANVAS (The "TIN" Field) */
+        #tin-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100vh;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* SCROLL CONTAINER */
+        .scrolly-container {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* THE "MOBILE" (Kinetic Objects) */
+        .mobile-viewport {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+            position: sticky;
+            top: 0;
+        }
+
+        .object-cluster {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            transform-style: preserve-3d;
+        }
+
+        .node {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 10px;
+            color: white;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
+        }
+
+        /* Swiss Shapes */
+        .circle { border-radius: 50%; width: 60px; height: 60px; }
+        .rect { width: 80px; height: 80px; }
+        .red { background: var(--swiss-red); }
+        .black { background: var(--swiss-black); }
+
+        /* NARRATIVE TEXT SECTIONS */
+        .step {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-left: 10%;
+            position: relative;
+            z-index: 20;
+            pointer-events: none; /* Let clicks pass through to canvas */
+        }
+
+        h1 {
+            font-size: 8vw;
+            line-height: 0.8;
+            margin: 0;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+            mix-blend-mode: exclusion;
+            color: #fff; /* Inversion effect */
+        }
+
+        p {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: var(--swiss-black);
+            color: white;
+            display: inline-block;
+            padding: 5px 10px;
+            margin-top: 20px;
+            max-width: 400px;
+        }
+
+        /* Spacer for scroll length */
+        .spacer { height: 50vh; }
+
+    </style>
+</head>
+<body>
+
+    <div class="ui-layer">
+        <div class="brand">JBF<span style="color:var(--swiss-red)">.</span>GIS</div>
+        <div class="status">
+            SYSTEM_STATUS: ONLINE<br>
+            LAT: <span id="lat">00.000</span> / LON: <span id="lon">00.000</span><br>
+            MODE: INTERACTIVE_RECOVERY
+        </div>
+    </div>
+
+    <canvas id="tin-canvas"></canvas>
+
+    <div class="scrolly-container">
+
+        <div class="mobile-viewport">
+            <div class="object-cluster" id="cluster">
+                <div class="node red circle" style="top:20%; left:20%;">RISK</div>
+                <div class="node black rect" style="top:50%; left:50%;">DATA</div>
+                <div class="node red rect" style="top:10%; left:60%;">H2O</div>
+                <div class="node black circle" style="top:70%; left:30%;">ZONE</div>
+                <div class="node black rect" style="top:40%; left:80%;">SHELTER</div>
+                <div class="node red circle" style="top:80%; left:70%;">GRID</div>
+            </div>
+        </div>
+
+        <section class="step">
+            <h1>Chaos<br>Theory.</h1>
+            <p>Disasters are unstructured. We see the noise before the pattern.</p>
+        </section>
+
+        <section class="step">
+            <h1>Data<br>Scanning.</h1>
+            <p>Identifying variables: Flood depth, socio-economic risk, infrastructure load.</p>
+        </section>
+
+        <section class="step">
+            <h1>Precision<br>Recovery.</h1>
+            <p>The JBF System aligns chaos into a structured response grid.</p>
+        </section>
+
+        <div class="spacer"></div>
+    </div>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        /* --- 1. THE "TIN" BACKGROUND (Interactive Canvas) --- */
+        const canvas = document.getElementById('tin-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let points = [];
+        const mouse = { x: -1000, y: -1000 };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initPoints();
+        }
+
+        function initPoints() {
+            points = [];
+            // Create a grid of points
+            for(let x=0; x<width; x+=60) {
+                for(let y=0; y<height; y+=60) {
+                    points.push({
+                        ox: x, oy: y, // Original position
+                        x: x, y: y,   // Current position
+                        vx: 0, vy: 0  // Velocity
+                    });
+                }
+            }
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw abstract connections
+            ctx.beginPath();
+            points.forEach(p => {
+                // Physics: Return to original position (Hooke's Law)
+                const dkx = p.ox - p.x;
+                const dky = p.oy - p.y;
+                p.vx += dkx * 0.05;
+                p.vy += dky * 0.05;
+                p.vx *= 0.85; // Friction
+                p.vy *= 0.85;
+
+                // Physics: Mouse Repulsion
+                const dmx = p.x - mouse.x;
+                const dmy = p.y - mouse.y;
+                const dist = Math.sqrt(dmx*dmx + dmy*dmy);
+                if(dist < 150) {
+                    const force = (150 - dist) / 150;
+                    p.vx += (dmx/dist) * force * 15;
+                    p.vy += (dmy/dist) * force * 15;
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Draw Point
+                ctx.moveTo(p.x, p.y);
+                ctx.rect(p.x, p.y, 2, 2);
+            });
+            ctx.fillStyle = "#CCC";
+            ctx.fill();
+            requestAnimationFrame(animateCanvas);
+        }
+
+        // Mouse Listeners
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            // Update UI
+            document.getElementById('lat').innerText = (e.clientX/100).toFixed(3);
+            document.getElementById('lon').innerText = (e.clientY/100).toFixed(3);
+        });
+
+        resize();
+        animateCanvas();
+
+
+        /* --- 2. THE SCROLL STORY (GSAP) --- */
+
+        // Initial "Floating" State (Calder Mobile)
+        gsap.to(".node", {
+            y: "random(-50, 50)",
+            x: "random(-50, 50)",
+            rotation: "random(-20, 20)",
+            duration: 3,
+            repeat: -1,
+            yoyo: true,
+            ease: "sine.inOut"
+        });
+
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: ".scrolly-container",
+                start: "top top",
+                end: "bottom bottom",
+                scrub: 1
+            }
+        });
+
+        // STEP 1: Explode outward (Analysis)
+        tl.to(".node", {
+            scale: 1.5,
+            x: (i) => Math.cos(i) * 300,
+            y: (i) => Math.sin(i) * 300,
+            rotation: 0,
+            duration: 2
+        })
+
+        // STEP 2: Snap to Grid (Recovery)
+        .to(".node", {
+            x: (i) => (i % 3) * 120 - 120, // Grid X
+            y: (i) => Math.floor(i / 3) * 120 - 60, // Grid Y
+            scale: 1,
+            borderRadius: "0%", // Turn circles to squares (Data Blocks)
+            backgroundColor: (i) => i % 2 === 0 ? "#E63946" : "#111", // Organize colors
+            duration: 2
+        });
+
+    </script>
+</body>
+</html>

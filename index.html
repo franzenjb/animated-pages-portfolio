@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINETIC.FOLIO // Animated Page Experiments</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        /* --- SWISS BRUTALIST DESIGN SYSTEM --- */
+        :root {
+            --bg: #0a0a0a;
+            --text: #fafafa;
+            --accent: #E63946;
+            --cream: #F1FAEE;
+            --gray: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+
+        /* FIXED UI FRAME */
+        .ui-frame {
+            position: fixed;
+            top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 2px solid var(--gray);
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .ui-header {
+            position: fixed;
+            top: 20px; left: 20px; right: 20px;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 60;
+            pointer-events: none;
+        }
+
+        .brand {
+            font-weight: 900;
+            font-size: 1.5rem;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            background: var(--bg);
+            padding: 5px 10px;
+        }
+
+        .brand span {
+            color: var(--accent);
+        }
+
+        .status {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-align: right;
+            background: var(--bg);
+            padding: 5px 10px;
+            color: #666;
+        }
+
+        .status-live {
+            color: var(--accent);
+        }
+
+        /* PORTFOLIO GRID */
+        .portfolio-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 120px 60px;
+        }
+
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* PORTFOLIO CARDS */
+        .portfolio-card {
+            background: #111;
+            border: 2px solid var(--gray);
+            cursor: pointer;
+            transition: border-color 0.2s;
+            will-change: transform;
+        }
+
+        .portfolio-card:hover {
+            border-color: var(--accent);
+        }
+
+        .card-screenshot {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #1a1a1a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-screenshot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .portfolio-card:hover .card-screenshot img {
+            opacity: 1;
+        }
+
+        .card-glint {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            pointer-events: none;
+        }
+
+        .card-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #333;
+            font-weight: 100;
+        }
+
+        .card-info {
+            padding: 20px;
+            border-top: 1px solid var(--gray);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .card-tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            background: var(--gray);
+            color: var(--text);
+        }
+
+        .card-tag--accent {
+            background: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* CTA CARD (Create Your Own) */
+        .card-cta {
+            border-style: dashed;
+            border-color: var(--accent);
+            background: rgba(230, 57, 70, 0.03);
+        }
+
+        .card-cta .card-screenshot {
+            background: linear-gradient(135deg, #111, #1a1a1a);
+        }
+
+        .cta-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 10px;
+        }
+
+        .cta-icon {
+            font-size: 48px;
+            color: var(--accent);
+            font-weight: 100;
+        }
+
+        .cta-text {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #666;
+        }
+
+        /* VIEWER OVERLAY */
+        .viewer-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .viewer-overlay.active {
+            display: flex;
+        }
+
+        .viewer-chrome {
+            height: 50px;
+            background: #111;
+            border-bottom: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+
+        .viewer-back {
+            background: transparent;
+            border: 2px solid var(--gray);
+            color: var(--text);
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .viewer-back:hover {
+            border-color: var(--accent);
+            background: rgba(230, 57, 70, 0.1);
+        }
+
+        .viewer-back .back-icon {
+            font-size: 18px;
+        }
+
+        .viewer-title {
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .viewer-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .viewer-action {
+            background: transparent;
+            border: 1px solid var(--gray);
+            color: #888;
+            padding: 6px 12px;
+            font-family: inherit;
+            font-size: 10px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .viewer-action:hover {
+            border-color: var(--text);
+            color: var(--text);
+        }
+
+        #pageFrame {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: var(--cream);
+        }
+
+        /* FOOTER */
+        .footer {
+            position: fixed;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #444;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .portfolio-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 30px;
+            }
+            .portfolio-container {
+                padding: 100px 30px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .portfolio-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .portfolio-container {
+                padding: 80px 20px;
+            }
+            .ui-header {
+                padding: 15px 20px;
+            }
+            .brand {
+                font-size: 1.2rem;
+            }
+            .viewer-chrome {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 10px;
+                gap: 10px;
+            }
+            .viewer-title {
+                order: -1;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- UI FRAME -->
+    <div class="ui-frame"></div>
+
+    <!-- HEADER -->
+    <header class="ui-header">
+        <div class="brand">KINETIC<span>.</span>FOLIO</div>
+        <div class="status">
+            <span class="status-live">SYSTEM: LIVE</span><br>
+            COORDS: <span id="coords">0.000 / 0.000</span><br>
+            MODE: EXPLORATION
+        </div>
+    </header>
+
+    <!-- PORTFOLIO GRID -->
+    <main class="portfolio-container">
+        <div class="portfolio-grid" id="portfolioGrid">
+
+            <!-- Card 1: KINETIC.LAB (External Vercel) -->
+            <article class="portfolio-card" data-page="kinetic-lab" data-external="https://animated-page-generator.vercel.app">
+                <div class="card-screenshot">
+                    <div class="card-placeholder">K</div>
+                    <div class="card-glint"></div>
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">KINETIC.LAB</h2>
+                    <p class="card-description">AI-Powered Animation Generator</p>
+                    <span class="card-tag">INTERACTIVE</span>
+                </div>
+            </article>
+
+            <!-- Card 2: Calder Mobile -->
+            <article class="portfolio-card" data-page="calder-mobile" data-src="pages/calder-mobile.html" data-type="fixed">
+                <div class="card-screenshot">
+                    <div class="card-placeholder">C</div>
+                    <div class="card-glint"></div>
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">CALDER MOBILE</h2>
+                    <p class="card-description">Physics Pendulum Sculpture</p>
+                    <span class="card-tag">CANVAS</span>
+                </div>
+            </article>
+
+            <!-- Card 3: Antigravity Flux -->
+            <article class="portfolio-card" data-page="antigravity-flux" data-src="pages/antigravity-flux.html" data-type="fixed">
+                <div class="card-screenshot">
+                    <div class="card-placeholder">A</div>
+                    <div class="card-glint"></div>
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">ANTIGRAVITY: FLUX</h2>
+                    <p class="card-description">Fluid Dynamics Particle Art</p>
+                    <span class="card-tag">GENERATIVE</span>
+                </div>
+            </article>
+
+            <!-- Card 4: GIS Scrollytelling -->
+            <article class="portfolio-card" data-page="gis-scrollytelling" data-src="pages/gis-scrollytelling.html" data-type="scrollable">
+                <div class="card-screenshot">
+                    <div class="card-placeholder">G</div>
+                    <div class="card-glint"></div>
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">GIS MASTER</h2>
+                    <p class="card-description">Swiss Brutalist Scrollytelling</p>
+                    <span class="card-tag">SCROLLYTELLING</span>
+                </div>
+            </article>
+
+            <!-- Card 5: Create Your Own (CTA) -->
+            <article class="portfolio-card card-cta" data-page="kinetic-lab" data-external="https://animated-page-generator.vercel.app">
+                <div class="card-screenshot">
+                    <div class="cta-content">
+                        <span class="cta-icon">+</span>
+                        <span class="cta-text">CREATE YOUR OWN</span>
+                    </div>
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">AI GENERATOR</h2>
+                    <p class="card-description">Build kinetic pages with natural language</p>
+                    <span class="card-tag card-tag--accent">TRY IT</span>
+                </div>
+            </article>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <div class="footer">KINETIC.FOLIO // GSAP + MOTION EXPERIMENTS // 2025</div>
+
+    <!-- VIEWER OVERLAY -->
+    <div class="viewer-overlay" id="viewer">
+        <div class="viewer-chrome">
+            <button class="viewer-back" id="closeViewer">
+                <span class="back-icon">&larr;</span>
+                <span>BACK</span>
+            </button>
+            <span class="viewer-title" id="viewerTitle">Page Title</span>
+            <div class="viewer-actions">
+                <button class="viewer-action" id="openNewTab">OPEN IN TAB</button>
+            </div>
+        </div>
+        <iframe id="pageFrame" src=""></iframe>
+    </div>
+
+    <script>
+        // ========================================
+        // KINETIC.FOLIO - GSAP ANIMATIONS
+        // ========================================
+
+        const cards = document.querySelectorAll('.portfolio-card');
+        const viewer = document.getElementById('viewer');
+        const pageFrame = document.getElementById('pageFrame');
+        const viewerTitle = document.getElementById('viewerTitle');
+        const coordsDisplay = document.getElementById('coords');
+
+        // Page configuration
+        const PAGE_CONFIG = {
+            'kinetic-lab': { title: 'KINETIC.LAB // AI Animation Generator' },
+            'calder-mobile': { title: 'CALDER MOBILE // Physics Sculpture' },
+            'antigravity-flux': { title: 'ANTIGRAVITY: FLUX // Particle Art' },
+            'gis-scrollytelling': { title: 'GIS MASTER // Scrollytelling' }
+        };
+
+        // Store original positions and floating tweens
+        const cardData = new Map();
+        let floatingTweens = [];
+
+        // ========================================
+        // 1. STAGGERED ENTRANCE ANIMATION
+        // ========================================
+        gsap.from('.portfolio-card', {
+            y: 80,
+            opacity: 0,
+            scale: 0.9,
+            rotation: () => gsap.utils.random(-8, 8),
+            duration: 1,
+            stagger: 0.12,
+            ease: 'elastic.out(1, 0.6)',
+            onComplete: startFloatingAnimations
+        });
+
+        gsap.from('.brand', {
+            y: -30,
+            opacity: 0,
+            duration: 0.8,
+            ease: 'power2.out'
+        });
+
+        gsap.from('.status', {
+            y: -30,
+            opacity: 0,
+            duration: 0.8,
+            delay: 0.2,
+            ease: 'power2.out'
+        });
+
+        // ========================================
+        // 2. FLOATING IDLE ANIMATION
+        // ========================================
+        function startFloatingAnimations() {
+            cards.forEach((card, i) => {
+                const tween = gsap.to(card, {
+                    y: gsap.utils.random(-15, 15),
+                    x: gsap.utils.random(-10, 10),
+                    rotation: gsap.utils.random(-3, 3),
+                    duration: gsap.utils.random(3, 5),
+                    repeat: -1,
+                    yoyo: true,
+                    ease: 'sine.inOut',
+                    delay: i * 0.2
+                });
+                floatingTweens.push({ card, tween });
+            });
+        }
+
+        // ========================================
+        // 3. MOUSE REPULSION PHYSICS
+        // ========================================
+        const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        const repulsionRadius = 250;
+        const repulsionStrength = 30;
+
+        document.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+
+            // Update coords display
+            coordsDisplay.textContent = `${(e.clientX / 100).toFixed(3)} / ${(e.clientY / 100).toFixed(3)}`;
+        });
+
+        function updatePhysics() {
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const cardCenterX = rect.left + rect.width / 2;
+                const cardCenterY = rect.top + rect.height / 2;
+
+                const dx = cardCenterX - mouse.x;
+                const dy = cardCenterY - mouse.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < repulsionRadius && distance > 0) {
+                    const force = (repulsionRadius - distance) / repulsionRadius;
+                    const pushX = (dx / distance) * force * repulsionStrength * 0.05;
+                    const pushY = (dy / distance) * force * repulsionStrength * 0.05;
+
+                    gsap.to(card, {
+                        x: `+=${pushX}`,
+                        y: `+=${pushY}`,
+                        duration: 0.3,
+                        ease: 'power2.out',
+                        overwrite: 'auto'
+                    });
+                }
+            });
+            requestAnimationFrame(updatePhysics);
+        }
+
+        // Start physics after entrance animation
+        setTimeout(updatePhysics, 1500);
+
+        // ========================================
+        // 4. CARD HOVER EFFECTS
+        // ========================================
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                // Stop floating animation
+                const data = floatingTweens.find(t => t.card === card);
+                if (data) data.tween.pause();
+
+                // Lift effect
+                gsap.to(card, {
+                    scale: 1.05,
+                    boxShadow: '15px 15px 0 rgba(230, 57, 70, 0.3)',
+                    zIndex: 100,
+                    duration: 0.25,
+                    ease: 'power2.out'
+                });
+
+                // Glint animation
+                const glint = card.querySelector('.card-glint');
+                if (glint) {
+                    gsap.fromTo(glint,
+                        { x: '-100%' },
+                        { x: '300%', duration: 0.5, ease: 'power2.inOut' }
+                    );
+                }
+            });
+
+            card.addEventListener('mouseleave', () => {
+                // Reset
+                gsap.to(card, {
+                    scale: 1,
+                    boxShadow: 'none',
+                    zIndex: 1,
+                    duration: 0.25,
+                    ease: 'power2.out'
+                });
+
+                // Resume floating
+                const data = floatingTweens.find(t => t.card === card);
+                if (data) data.tween.resume();
+            });
+        });
+
+        // ========================================
+        // 5. NAVIGATION SYSTEM
+        // ========================================
+        function openPage(card) {
+            const pageId = card.dataset.page;
+            const external = card.dataset.external;
+            const src = card.dataset.src;
+            const config = PAGE_CONFIG[pageId] || { title: 'Page' };
+
+            viewerTitle.textContent = config.title;
+
+            if (external) {
+                // External URL - open in iframe
+                pageFrame.src = external;
+            } else if (src) {
+                // Local page
+                pageFrame.src = src;
+            }
+
+            // Animate in
+            viewer.classList.add('active');
+            gsap.fromTo(viewer,
+                { opacity: 0 },
+                { opacity: 1, duration: 0.3, ease: 'power2.out' }
+            );
+        }
+
+        function closePage() {
+            gsap.to(viewer, {
+                opacity: 0,
+                duration: 0.25,
+                ease: 'power2.in',
+                onComplete: () => {
+                    viewer.classList.remove('active');
+                    pageFrame.src = '';
+                }
+            });
+        }
+
+        // Card click handlers
+        cards.forEach(card => {
+            card.addEventListener('click', () => openPage(card));
+        });
+
+        // Close button
+        document.getElementById('closeViewer').addEventListener('click', closePage);
+
+        // Open in new tab
+        document.getElementById('openNewTab').addEventListener('click', () => {
+            if (pageFrame.src) {
+                window.open(pageFrame.src, '_blank');
+            }
+        });
+
+        // ESC to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && viewer.classList.contains('active')) {
+                closePage();
+            }
+        });
+
+        // ========================================
+        // 6. TOUCH DEVICE ADAPTATIONS
+        // ========================================
+        const isTouchDevice = 'ontouchstart' in window;
+
+        if (isTouchDevice) {
+            // Reduce floating intensity on touch
+            gsap.globalTimeline.timeScale(0.5);
+        }
+    </script>
+</body>
+</html>
